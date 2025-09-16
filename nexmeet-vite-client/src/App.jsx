@@ -1,53 +1,60 @@
-// client/src/App.jsx
+// src/App.jsx
 
 import React, { useEffect } from "react";
-import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
-// Import Layout and Page Components
-import Navbar from "./components/Navbar.jsx";
-import PrivateRoute from "./components/PrivateRoute.jsx"; // <-- STEP 1: IMPORT THE NEW COMPONENT
-import HomePage from "./pages/HomePage.jsx";
-import LoginPage from "./pages/LoginPage.jsx";
-import RegisterPage from "./pages/RegisterPage.jsx";
-import DashboardPage from "./pages/DashboardPage.jsx";
+// Import Components
+import Navbar from "./components/Navbar";
+import PrivateRoute from "./components/PrivateRoute";
+
+// Import Pages
+import HomePage from "./pages/HomePage";
+import RegisterPage from "./pages/RegisterPage";
+import LoginPage from "./pages/LoginPage";
+import DashboardPage from "./pages/DashboardPage";
+import MeetingRoomPage from "./pages/MeetingRoomPage";
 
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // This hook handles catching the token after a successful Google login redirect.
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const token = params.get("token");
-
     if (token) {
+      console.log("Google Auth Token found in URL:", token);
+      alert("Logged in with Google successfully!");
       localStorage.setItem("token", token);
+      // Navigate to the dashboard and remove the token from the URL
       navigate("/dashboard", { replace: true });
     }
   }, [location, navigate]);
 
   return (
-    <div className="bg-gray-900 min-h-screen text-white">
+    <div className="bg-gray-900 text-white min-h-screen">
       <Navbar />
       <main>
         <Routes>
-          {/* These routes are public and can be accessed by anyone. */}
+          {/* Public Routes */}
           <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/login" element={<LoginPage />} />
 
-          {/*
-            STEP 2: PROTECT THE DASHBOARD ROUTE
-            - We wrap the <DashboardPage /> component inside our <PrivateRoute> component.
-            - Now, before React Router can render the DashboardPage, it must first render PrivateRoute.
-            - The PrivateRoute component will check for a token.
-              - If the token exists, it will render its "children", which in this case is <DashboardPage />.
-              - If the token does NOT exist, it will redirect the user to "/login".
-          */}
+          {/* Protected Routes */}
           <Route
             path="/dashboard"
             element={
               <PrivateRoute>
                 <DashboardPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/room/:roomId"
+            element={
+              <PrivateRoute>
+                <MeetingRoomPage />
               </PrivateRoute>
             }
           />
@@ -57,4 +64,7 @@ function App() {
   );
 }
 
+// THE FIX IS HERE:
+// We have removed the AppWrapper component that contained the extra <Router>.
+// The file now correctly exports the main App component directly.
 export default App;
