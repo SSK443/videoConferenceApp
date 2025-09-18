@@ -1,92 +1,130 @@
 // server/server.js
 
-require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const passport = require('passport');
-const http = require('http'); // Required for Socket.IO
-const { Server } = require('socket.io'); // Required for Socket.IO
+require("dotenv").config();
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors");
+const mongoose = require("mongoose");
+const passport = require("passport");
+const jwt = require("jsonwebtoken");
+const User = require("./models/user.model");
 
 const app = express();
-
-// --- Middleware ---
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-
-// --- Passport Middleware ---
-app.use(passport.initialize());
-require('./config/passport')(passport); // Passport config
-
-// --- Database Connection ---
-const MONGO_URI = process.env.MONGO_URI;
-mongoose
-  .connect(MONGO_URI)
-  .then(() => console.log('MongoDB database connection established successfully'))
-  .catch((err) => console.error('MongoDB connection error:', err));
-
-// --- API Routes ---
-const authRouter = require('./routes/auth');
-app.use('/api/auth', authRouter);
-
-// --- Create HTTP Server and Integrate Socket.IO ---
 const server = http.createServer(app);
-
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:5173', // Your React client's address
-    methods: ['GET', 'POST'],
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"],
   },
 });
 
-// --- Socket.IO Connection Logic ---
-io.on('connection', (socket) => {
-  console.log(`User Connected: ${socket.id}`);
+const PORT = process.env.PORT || 5000;
 
-  // --- Logic for Chat ---
-  socket.on('join_room', (data) => {
-    socket.join(data);
-    console.log(`User with ID: ${socket.id} joined room: ${data}`);
+app.use(cors());
+app.use(express.json());
+app.use(passport.initialize());
+
+require("./config/passport")(passport);
+
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() =>
+    console.log("MongoDB database connection established successfully")
+  )
+  .catch((err) => console.error(err));
+
+const authRouter = require("./routes/auth");
+app.use("/api/auth", authRouter);
+
+const roomParticipants = {};
+
+io.on("connection", (socket) => {
+  console.log("A user connected via socket:", socket.id);
+
+  socket.on("join-video-room", (roomId, peerId, token) => {
+    if (!token) {
+      console.log("Join attempt failed: No token provided.");
+      return;
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      // --- THE FIX IS HERE ---
+      // We need to look inside the 'user' object in the token
+      const userId = decoded.user.id;
+      console.log(`[DEBUG] Verifying token for user ID: ${userId}`);
+
+      // --- AND THE FIX IS HERE ---
+      // Use the correct userId variable to find the user
+      User.findById(userId).then((user) => {
+        console.log(`[DEBUG] Database query result for user:`, user);
+
+        if (!user) {
+          console.log("Join attempt failed: User not found in DB.");
+          return;
+        }
+
+        socket.join(roomId);
+        console.log(
+          `User ${user.username} (socket: ${socket.id}) with peerId ${peerId} joined room ${roomId}`
+        );
+
+        if (!roomParticipants[roomId]) {
+          roomParticipants[roomId] = [];
+        }
+
+        const newParticipant = {
+          socketId: socket.id,
+          peerId: peerId,
+          username: user.username,
+          role: user.role,
+        };
+
+        socket.emit("room-participants", roomParticipants[roomId]);
+        roomParticipants[roomId].push(newParticipant);
+        socket.to(roomId).emit("user-connected", newParticipant);
+
+        socket.on("disconnect", () => {
+          console.log(
+            `User ${user.username} (socket: ${socket.id}) disconnected from room ${roomId}`
+          );
+          if (roomParticipants[roomId]) {
+            roomParticipants[roomId] = roomParticipants[roomId].filter(
+              (p) => p.socketId !== socket.id
+            );
+            io.to(roomId).emit("user-disconnected", peerId, socket.id);
+          }
+        });
+
+        socket.on("admin-mute-user", ({ targetSocketId }) => {
+          const sender = roomParticipants[roomId]?.find(
+            (p) => p.socketId === socket.id
+          );
+          if (sender && sender.role === "admin") {
+            console.log(
+              `Admin ${sender.username} is muting user with socket ID ${targetSocketId}`
+            );
+            io.to(targetSocketId).emit("force-mute");
+          } else {
+            console.log("Unauthorized mute attempt by user:", sender?.username);
+          }
+        });
+      });
+    } catch (err) {
+      console.error("JWT verification failed for join-video-room", err);
+    }
   });
 
-  socket.on('send_message', (data) => {
-    socket.to(data.room).emit('receive_message', data);
+  socket.on("join_room", (roomName) => {
+    socket.join(roomName);
   });
-
-  // --- ========================================== ---
-  // --- NEW: Logic for WebRTC Video Call Signaling ---
-  // --- ========================================== ---
-
-  // This event is triggered when a user enters a meeting room on the frontend.
-  socket.on('join-video-room', (roomId, peerId) => {
-    // The user joins the specified room.
-    socket.join(roomId);
-    console.log(`A user joined the video room: ${roomId}. Peer ID: ${peerId}`);
-
-    // The server then broadcasts a message to everyone else in the room.
-    // This message tells the existing users that a new user has connected and shares their peerId.
-    // The existing users will then use this peerId to initiate a direct connection.
-    socket.to(roomId).emit('user-connected', peerId);
-
-    // This event is triggered when a user leaves the meeting room or closes the browser.
-    socket.on('disconnect', () => {
-      console.log(`User disconnected from video room: ${roomId}. Peer ID: ${peerId}`);
-      // The server broadcasts to everyone in the room that this user has left.
-      // The frontend will then know to remove this user's video stream.
-      socket.to(roomId).emit('user-disconnected', peerId);
-    });
-  });
-
-  // This is a fallback for the main disconnect event
-  socket.on('disconnect', () => {
-    console.log(`User Disconnected: ${socket.id}`);
+  socket.on("send_message", (data) => {
+    socket.to(data.room).emit("receive_message", data.message);
   });
 });
 
-// --- Start The Server ---
-const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server is running on port: ${PORT}`);
 });
-

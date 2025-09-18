@@ -223,3 +223,8 @@ This plan is a roadmap. Don't worry if you need to spend a little more time on s
 
 
 tailwind command run-   npx tailwindcss -i ./src/input.css -o ./dist/output.css --watch
+
+
+
+
+# MONGO_URI=mongodb+srv://surajskumar443:eSRnBCwwF2Gmpqxx@nextmeetdb.y8q4bcx.mongodb.net/?retryWrites=true&w=majority&appName=nextMeetDB

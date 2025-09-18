@@ -18,18 +18,20 @@ const userSchema = new Schema(
       unique: true,
       trim: true,
     },
-    // The 'required: true' property has been removed from the password field.
-    // This allows us to create users via Google OAuth without needing a password.
     password: {
-      type: String,
+      type: String, // Not required because of Google OAuth
     },
-    // We add a field to store the unique ID we get from Google.
     googleId: {
       type: String,
     },
+    // --- NEW FIELD ---
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
   },
   {
-    // timestamps will automatically add 'createdAt' and 'updatedAt' fields
     timestamps: true,
   }
 );
