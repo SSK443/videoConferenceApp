@@ -86,3 +86,86 @@ const Chat = () => {
 };
 
 export default Chat;
+
+
+
+
+
+
+
+
+
+
+
+
+// src/components/Chat.jsx
+
+// import React, { useState, useEffect, useRef } from 'react';
+
+// const Chat = ({ currentUser, messages, onSendMessage, onClose }) => {
+//   const [currentMessage, setCurrentMessage] = useState('');
+//   const messageContainerRef = useRef(null);
+
+//   // This effect automatically scrolls to the newest message
+//   useEffect(() => {
+//     if (messageContainerRef.current) {
+//       messageContainerRef.current.scrollTop = messageContainerRef.current.scrollHeight;
+//     }
+//   }, [messages]);
+
+//   const sendMessage = () => {
+//     // Only send a message if it's not empty and we know who the user is
+//     if (currentMessage.trim() && currentUser) {
+//       onSendMessage(currentMessage);
+//       setCurrentMessage(''); // Clear the input box after sending
+//     }
+//   };
+
+//   return (
+//     // This container creates the chat sidebar that slides in from the right
+//     <div className="absolute top-0 right-0 h-full w-full md:w-80 bg-gray-800 border-l border-gray-700 flex flex-col p-4 z-30 animate-slide-in-right">
+      
+//       {/* Header with Title and Close Button */}
+//       <div className="flex justify-between items-center mb-4 flex-shrink-0">
+//         <h3 className="text-xl font-bold text-white">In-call Messages</h3>
+//         <button onClick={onClose} className="text-gray-400 hover:text-white" title="Close Chat">
+//             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+//                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+//             </svg>
+//         </button>
+//       </div>
+      
+//       {/* Message Display Area */}
+//       <div ref={messageContainerRef} className="flex-grow bg-gray-900 rounded p-2 overflow-y-auto mb-4">
+//         {messages.map((msg) => (
+//           <div key={msg.id} className={`mb-3 flex flex-col ${msg.author === currentUser.username ? 'items-end' : 'items-start'}`}>
+//              <p className="text-xs text-gray-400 mb-1 px-1">
+//                 {msg.author === currentUser.username ? "You" : msg.author}
+//             </p>
+//             <p className={`p-2 rounded-lg inline-block text-white max-w-xs break-words ${msg.author === currentUser.username ? 'bg-blue-600' : 'bg-gray-700'}`}>
+//               {msg.message}
+//             </p>
+//           </div>
+//         ))}
+//       </div>
+
+//       {/* Message Input Field */}
+//       <div className="flex flex-shrink-0">
+//         <input
+//           type="text"
+//           value={currentMessage}
+//           placeholder="Type a message..."
+//           onChange={(e) => setCurrentMessage(e.target.value)}
+//           onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+//           className="flex-grow p-2 rounded-l-md bg-gray-700 text-white focus:outline-none"
+//         />
+//         <button onClick={sendMessage} className="bg-blue-600 text-white p-2 rounded-r-md hover:bg-blue-500 transition-colors">
+//           Send
+//         </button>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default Chat;
+
